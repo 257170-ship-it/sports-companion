@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>運動夥伴養成</title>
+<link rel="stylesheet" href="motion/companion-motion.css">
+<style>
+  :root {
+    --mint: #bfe9cf;
+    --mint-deep: #1f5a3d;
+    --cream: #fff8e8;
+    --cream-2: #f6ead0;
+    --white: #ffffff;
+    --coral: #dc4f33;
+    --coral-dark: #b33c25;
+    --ink: #24190f;
+    --muted: #6d5f4c;
+    --font: "Noto Sans TC", "Noto Sans CJK TC", "Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; width: 100%; height: 100%;
+    overflow: hidden;
+    background: #9fd9b4;
+    font-family: var(--font);
+    color: var(--ink);
+  }
+
+  /* ===== 1920 × 1080 舞台，依視窗等比例縮放 ===== */
+  #stage {
+    position: absolute; left: 0; top: 0;
+    width: 1920px; height: 1080px;
+    transform-origin: 0 0;
+    background: url("scene/meadow.webp") center / cover no-repeat;
+    overflow: hidden;
+  }
+
+  /* ===== 頁首 ===== */
+  .hdr {
+    position: absolute; left: 56px; right: 56px; top: 30px; height: 130px;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  }
+  .grade-pill {
+    justify-self: start;
+    display: flex; align-items: center; gap: 18px;
+    background: var(--cream);
+    border: 5px solid var(--white);
+    border-radius: 999px;
+    padding: 8px 40px 10px 16px;
+    box-shadow: 0 8px 0 rgba(31, 90, 61, .18);
+    max-width: 640px;
+  }
+  .grade-pill .dot {
+    flex: none; width: 64px; height: 64px; border-radius: 50%;
+    background: var(--coral) url("icons/reward-star.png") center / 70% no-repeat;
+    border: 4px solid var(--white);
+  }
+  .grade-pill .lbl { font-size: 24px; font-weight: 700; color: var(--muted); line-height: 1.1; }
+  .grade-pill .val {
+    font-size: 56px; font-weight: 900; line-height: 1.05; letter-spacing: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px;
+  }
+  .title-img { height: 120px; width: auto; display: block; filter: drop-shadow(0 6px 0 rgba(31, 90, 61, .15)); }
+  .hdr-right {
+    justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  }
+  .chips { display: flex; gap: 12px; align-items: center; }
+  .chip {
+    background: var(--cream); border: 4px solid var(--white); border-radius: 999px;
+    padding: 4px 22px 6px; font-size: 28px; font-weight: 800; white-space: nowrap;
+    box-shadow: 0 6px 0 rgba(31, 90, 61, .15);
+  }
+  .chip.pause { background: var(--coral); color: var(--white); }
+  .chip.demo { background: #ffe39a; }
+  .chip[hidden] { display: none; }
+  .sync { font-size: 22px; font-weight: 600; color: rgba(31, 66, 46, .72); white-space: nowrap; }
+  .sync.stale { color: #8a4a1c; }
+
+  /* ===== 內容區 ===== */
+  #main {
+    position: absolute; left: 56px; right: 56px; top: 178px; bottom: 122px;
+  }
+  .page { width: 100%; height: 100%; }
+  .page.enter { animation: pageIn 480ms ease-out both; }
+  @keyframes pageIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    position: relative;
+    background: var(--cream);
+    border: 5px solid var(--white);
+    box-shadow: 0 12px 0 rgba(31, 90, 61, .16), 0 22px 36px rgba(31, 90, 61, .16);
+    min-width: 0; min-height: 0;
+    transition: box-shadow 200ms, border-color 200ms;
+  }
+  .card.is-playing { border-color: #ffd2c2; box-shadow: 0 12px 0 rgba(31, 90, 61, .16), 0 0 0 8px rgba(220, 79, 51, .35); }
+
+  .who { min-width: 0; }
+  .grade-tag {
+    position: absolute; left: 26px; top: 22px; z-index: 3;
+    background: var(--mint-deep); color: var(--white);
+    border: 4px solid var(--white); border-radius: 999px;
+    font-size: 34px; font-weight: 900; line-height: 1.15; padding: 2px 24px 6px;
+    box-shadow: 0 5px 0 rgba(31, 90, 61, .25); white-space: nowrap;
+  }
+  .layout-quad .grade-tag { font-size: 24px; left: 16px; top: 14px; padding: 0 14px 3px; }
+  .layout-rows .grade-tag { display: none; }
+  .sports-companion { flex: none; }
+  .sports-companion__figure { pointer-events: none; }
+  .nameplate {
+    background: var(--coral); color: var(--white);
+    border: 4px solid var(--white); border-radius: 999px;
+    box-shadow: 0 6px 0 var(--coral-dark);
+    font-weight: 900; line-height: 1.15; text-align: center;
+    white-space: nowrap; overflow: hidden;
+    min-width: 0;
+  }
+  .collection { display: flex; gap: 12px; }
+  .slot {
+    flex: none; border-radius: 22%;
+    background: var(--cream-2);
+    display: grid; place-items: center;
+  }
+  .slot img { width: 86%; height: 86%; object-fit: contain; display: block; }
+  .slot.empty { background: transparent; border: 3px dashed #e2d2ad; }
+
+  .stats { min-width: 0; }
+  .stat {
+    background: var(--white); min-width: 0;
+    display: grid;
+  }
+  .stat-id { grid-area: id; display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .stat-id img { flex: none; object-fit: contain; display: block; }
+  .stat-id span { font-weight: 800; color: var(--muted); white-space: nowrap; }
+  .num {
+    grid-area: num; min-width: 0;
+    font-weight: 900; line-height: 1; letter-spacing: -1px;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+    white-space: nowrap; overflow: hidden;
+  }
+  .num.na { color: #a89a83; }
+  .nodes { grid-area: nodes; display: flex; gap: 10px; align-items: flex-start; }
+  .node { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .node img { display: block; object-fit: contain; }
+  .node .cap { font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag {
+    grid-area: tag; justify-self: end; align-self: center;
+    font-weight: 800; white-space: nowrap; color: var(--coral-dark);
+  }
+  .tag.off { color: #a89a83; }
+
+  /* ---- 1～2 人：左右大卡 ---- */
+  .layout-duo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; }
+  .layout-duo.single { grid-template-columns: 900px; justify-content: center; }
+  .layout-duo .card {
+    border-radius: 44px; padding: 30px 34px;
+    display: grid; grid-template-columns: 340px 1fr; gap: 28px; align-items: center;
+  }
+  .layout-duo .who { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .layout-duo .sports-companion { width: 320px; }
+  .layout-duo .nameplate { font-size: 60px; padding: 4px 36px 8px; max-width: 340px; margin-top: -26px; position: relative; z-index: 2; }
+  .layout-duo .slot { width: 96px; height: 96px; }
+  .layout-duo .stats { display: flex; flex-direction: column; gap: 24px; height: 100%; justify-content: center; }
+  .layout-duo .stat {
+    border-radius: 32px; padding: 20px 28px 22px;
+    grid-template-columns: 1fr auto; grid-template-areas: "id tag" "num num" "nodes nodes";
+    row-gap: 8px;
+  }
+  .layout-duo .stat-id img { width: 64px; height: 64px; }
+  .layout-duo .stat-id span { font-size: 38px; }
+  .layout-duo .tag { font-size: 28px; }
+  .layout-duo .num { font-size: 124px; padding: 2px 0 4px; }
+  .layout-duo .nodes { gap: 22px; }
+  .layout-duo .node img { width: 70px; height: 70px; }
+  .layout-duo .node .cap { font-size: 22px; }
+
+  /* ---- 3～4 人：雙欄 ---- */
+  .layout-quad { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 28px 36px; }
+  .layout-quad .card.center { grid-column: 1 / -1; justify-self: center; width: calc((100% - 36px) / 2); }
+  .layout-quad .card {
+    border-radius: 38px; padding: 18px 24px 18px 18px;
+    display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: center;
+  }
+  .layout-quad .who {
+    display: grid; grid-template-columns: 224px 64px; grid-template-rows: auto auto; gap: 0 12px;
+    grid-template-areas: "fig coll" "name coll"; align-items: end;
+  }
+  .layout-quad .sports-companion { grid-area: fig; width: 224px; }
+  .layout-quad .nameplate { grid-area: name; font-size: 42px; padding: 2px 16px 6px; margin-top: -18px; position: relative; z-index: 2; }
+  .layout-quad .collection { grid-area: coll; flex-direction: column; align-self: center; gap: 10px; }
+  .layout-quad .slot { width: 64px; height: 64px; }
+  .layout-quad .stats { display: flex; flex-direction: column; gap: 14px; }
+  .layout-quad .stat {
+    border-radius: 26px; padding: 10px 20px 12px;
+    grid-template-columns: 1fr auto; grid-template-areas: "id tag" "num nodes";
+    column-gap: 14px; align-items: center;
+  }
+  .layout-quad .stat-id img { width: 44px; height: 44px; }
+  .layout-quad .stat-id span { font-size: 28px; }
+  .layout-quad .tag { font-size: 22px; }
+  .layout-quad .num { font-size: 88px; }
+  .layout-quad .nodes { gap: 10px; }
+  .layout-quad .node img { width: 54px; height: 54px; }
+  .layout-quad .node .cap { font-size: 17px; }
+
+  /* ---- 5～7 人：每人一列 ---- */
+  .layout-rows { display: grid; gap: 12px; }
+  .layout-rows .card {
+    border-radius: 30px; padding: 0 20px 0 14px;
+    display: grid; grid-template-columns: 560px 1fr; gap: 18px; align-items: center;
+  }
+  .layout-rows .who { display: flex; align-items: center; gap: 14px; height: 100%; }
+  .layout-rows .sports-companion { width: min(calc(var(--h) * 1.02), 128px); margin-top: calc(var(--h) * -0.1); }
+  .layout-rows .nameplate { flex: 1 1 auto; font-size: min(calc(var(--h) * .40), 50px); padding: 0 18px calc(var(--h) * .03); }
+  .layout-rows .collection { gap: 8px; flex: none; }
+  .layout-rows .slot { width: min(calc(var(--h) * .56), 64px); height: min(calc(var(--h) * .56), 64px); }
+  .layout-rows .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 100%; padding: 8px 0; }
+  .layout-rows .stat {
+    border-radius: 22px; padding: 4px 18px 4px 12px;
+    grid-template-columns: min(calc(var(--h) * .82), 100px) 1fr auto;
+    grid-template-rows: 1fr auto 1fr;
+    grid-template-areas: "id num ." "id num nodes" "id num tag";
+    column-gap: 14px; align-items: center;
+  }
+  .layout-rows .stat-id { flex-direction: column; gap: 0; justify-content: center; }
+  .layout-rows .stat-id img { width: min(calc(var(--h) * .42), 56px); height: min(calc(var(--h) * .42), 56px); }
+  .layout-rows .stat-id span { font-size: min(calc(var(--h) * .2), 26px); line-height: 1.1; }
+  .layout-rows .num { font-size: min(calc(var(--h) * .74), 100px); text-align: right; }
+  .layout-rows .nodes { gap: 6px; align-self: end; }
+  .layout-rows .node img { width: min(calc(var(--h) * .38), 50px); height: min(calc(var(--h) * .38), 50px); }
+  .layout-rows .node .cap { display: none; }
+  .layout-rows .tag { font-size: min(calc(var(--h) * .16), 22px); justify-self: center; align-self: start; line-height: 1.2; }
+
+  /* ---- 狀態訊息（載入中、讀取失敗、無資料） ---- */
+  .notice {
+    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+    background: var(--cream); border: 6px solid var(--white); border-radius: 48px;
+    padding: 48px 80px; text-align: center;
+    box-shadow: 0 12px 0 rgba(31, 90, 61, .16);
+  }
+  .notice h2 { margin: 0; font-size: 72px; font-weight: 900; }
+  .notice p { margin: 18px 0 0; font-size: 30px; color: var(--muted); font-weight: 600; }
+
+  /* ===== 頁尾：兩項門檻 ===== */
+  .ftr {
+    position: absolute; left: 56px; right: 56px; bottom: 30px; height: 74px;
+    background: rgba(255, 248, 232, .94); border: 4px solid var(--white); border-radius: 999px;
+    display: flex; align-items: center; gap: 26px; padding: 0 32px;
+    box-shadow: 0 8px 0 rgba(31, 90, 61, .15);
+    overflow: hidden;
+  }
+  .ftr .grp { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-size: 27px; font-weight: 700; color: var(--muted); }
+  .ftr .grp img { width: 46px; height: 46px; }
+  .ftr .grp b { color: var(--ink); font-weight: 900; font-size: 32px; font-variant-numeric: tabular-nums; margin: 0 6px; }
+  .ftr .grp .k { color: var(--ink); font-weight: 900; margin-right: 4px; }
+  .ftr .sep { width: 4px; height: 38px; border-radius: 2px; background: #e8d9b6; }
+  .ftr .keys { margin-left: auto; font-size: 20px; color: #8b7d68; font-weight: 600; white-space: nowrap; }
+  .progress { position: absolute; left: 0; bottom: 0; height: 6px; width: 0; background: var(--coral); border-radius: 0 3px 3px 0; opacity: .75; }
+
+  .img-missing { outline: 3px dashed #d33; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page.enter { animation: none; }
+    .card { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage" aria-live="polite">
+  <header class="hdr">
+    <div class="grade-pill">
+      <div class="dot" aria-hidden="true"></div>
+      <div>
+        <div class="lbl" id="pillLabel">目前年級</div>
+        <div class="val" id="gradeLabel">—</div>
+      </div>
+    </div>
+    <img class="title-img" src="scene/title.png" alt="運動夥伴養成">
+    <div class="hdr-right">
+      <div class="chips">
+        <span class="chip demo" id="demoChip" hidden>示範模式</span>
+        <span class="chip pause" id="pauseChip" hidden>輪播暫停</span>
+        <span class="chip" id="pageChip" hidden>1 / 1</span>
+      </div>
+      <div class="sync" id="syncText">讀取健康統計中…</div>
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer class="ftr">
+    <div class="grp"><img src="icons/jump-rope.png" alt=""><span class="k">跳繩</span>
+      <b>3,000</b>·<b>6,000</b>·<b>9,000</b></div>
+    <div class="sep"></div>
+    <div class="grp"><img src="icons/flying-disc.png" alt=""><span class="k">飛盤</span>
+      <b>600</b>·<b>800</b>·<b>1,000</b></div>
+    <div class="keys">← → 換頁　空白鍵 暫停　F 全螢幕</div>
+    <div class="progress" id="progress"></div>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+ * 【設定區】試算表、更新秒數、輪播秒數都在這裡修改
+ * ===================================================================== */
+const CONFIG = {
+  // Google 試算表（唯讀連動）
+  SHEET_ID:   "1tkhV6y-pi0ubn9sxqedY5IyoRu8uS2OdsyjU_ElKcTQ",
+  SHEET_NAME: "健康統計",          // 僅供核對與顯示；實際以 GID 指定工作表
+  SHEET_GID:  "41490090",
+  QUERY:      "select A, B, C, E",  // A 年級、B 姓名、C 飛盤累計、E 跳繩累計
+
+  REFRESH_SECONDS: 30,   // 資料更新間隔（秒）
+  PAGE_SECONDS:    15,   // 每個年級停留秒數（秒）
+  GROUP_BY_GRADE:  false, // false＝不分年級，全部學生依試算表列順序排；true＝一個年級一頁
+  MAX_PER_PAGE:    2,     // 一頁幾位學生（目前兩人一頁；分年級時最多 7）
+
+  // 示範模式：預設關閉。改成 true，或在網址後加上 ?demo 即可啟用
+  DEMO_MODE: false,
+};
+
+// 門檻與解鎖內容（由網頁依累計數字自行計算）
+const JUMP_LEVELS = [
+  { at: 3000, motion: "hop",    name: "小跳",   ms: 650 },
+  { at: 6000, motion: "spin",   name: "轉圈跳", ms: 950 },
+  { at: 9000, motion: "triple", name: "三連跳", ms: 1050 },
+];
+const DISC_LEVELS = [
+  { at: 600,  img: "accessories/headband.png", name: "運動頭帶" },
+  { at: 800,  img: "accessories/bandana.png",  name: "運動領巾" },
+  { at: 1000, img: "accessories/medal.png",    name: "星星獎牌" },
+];
+
+// 七隻夥伴，依學生順序指派
+const COMPANIONS = [
+  { id: "rabbit",    name: "兔子",   img: "characters/rabbit-idle.png" },
+  { id: "fox",       name: "狐狸",   img: "characters/fox-idle.png" },
+  { id: "hedgehog",  name: "刺蝟",   img: "characters/hedgehog-idle.png" },
+  { id: "otter",     name: "水獺",   img: "characters/otter-idle.png" },
+  { id: "turtle",    name: "烏龜",   img: "characters/turtle-idle.png" },
+  { id: "duckling",  name: "小鴨",   img: "characters/duckling-idle.png" },
+  { id: "red-panda", name: "小貓熊", img: "characters/red-panda-idle.png" },
+];
+
+/* 【示範資料】只在示範模式顯示。欄位順序同查詢結果：[年級, 姓名, 飛盤累計, 跳繩累計]
+ * 要調整示範的班級、學生、累計數字，改這裡即可。 */
+const DEMO_ROWS = [
+  ["二年級", "林小晴", 820, 4200],
+  ["二年級", "陳宥安", 800, 6000],
+
+  ["三年級", "王子睿", 650, 3100],
+  ["三年級", "李沛恩", 1000, 9000],
+  ["三年級", "張語彤", 300, 1200],
+
+  ["四年級", "黃柏宇", 520, 9350],
+  ["四年級", "吳思妤", 1240, 12480],
+  ["四年級", "蔡承恩", 0, 0],
+  ["四年級", "許芯瑜", 799, 5999],
+
+  ["五年級", "周品妍", 610, 3000],
+  ["五年級", "鄭宇翔", 905, 7020],
+  ["五年級", "劉家豪", 1001, 9001],
+  ["五年級", "楊詩涵", 450, 2800],
+  ["五年級", "謝承佑", 820, 6800],
+
+  ["六年級", "江采潔", 820, 4200],
+  ["六年級", "簡志明", 800, 6000],
+  ["六年級", "羅以安", 520, 9350],
+  ["六年級", "葉子晴", "", 3500],
+  ["六年級", "范宇辰", 1050, ""],
+  ["六年級", "潘若彤", 0, 0],
+  ["六年級", "高語辰", 1200, 15020],
+];
+
+/* =====================================================================
+ * 以下為程式本體
+ * ===================================================================== */
+const DEMO = CONFIG.DEMO_MODE || /[?&]demo\b/.test(location.search);
+const reducedMotionMQ = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 3 });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const state = {
+  groups: [],          // [{ key, label, students: [{ key, name, jump, disc, comp }] }]
+  pages: [],           // [{ id, groupKey, label, students }]
+  pageIndex: 0,
+  pageId: null,
+  elapsed: 0,          // 本頁已停留毫秒數
+  paused: false,
+  loaded: false,
+  lastOk: null,
+  lastError: null,
+  signature: "",
+  assignments: new Map(), // groupKey -> Map(studentKey -> companionIndex)
+};
+
+/* ---------- 舞台縮放（等比例適應 16:9 螢幕） ---------- */
+function fitStage() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  const x = (innerWidth - 1920 * s) / 2, y = (innerHeight - 1080 * s) / 2;
+  $("stage").style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+}
+addEventListener("resize", fitStage);
+fitStage();
+
+/* ---------- 規則計算 ---------- */
+function reached(count, levels) {
+  if (count == null) return [];
+  return levels.filter((l) => count >= l.at); // 由低往上，保留較低門檻
+}
+
+/* ---------- 資料整理 ---------- */
+function isBlank(v) { return v == null || (typeof v === "string" && v.trim() === ""); }
+
+function parseCount(v) {
+  if (isBlank(v)) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).replace(/[,，\s]/g, "");
+  return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : null;
+}
+
+function gradeLabel(v) {
+  if (isBlank(v)) return "未填年級";
+  const s = String(v).trim();
+  return /^\d+$/.test(s) ? `${s} 年級` : s;
+}
+
+// rows: [[年級, 姓名, 飛盤, 跳繩], ...]
+function buildGroups(rows) {
+  const groups = [], byKey = new Map();
+  for (const r of rows) {
+    if (r.every(isBlank)) continue;                 // 略過完全空白列
+    const gKey = !CONFIG.GROUP_BY_GRADE ? "*" : isBlank(r[0]) ? "" : String(r[0]).trim();
+    let g = byKey.get(gKey);
+    if (!g) { g = { key: gKey, label: CONFIG.GROUP_BY_GRADE ? gradeLabel(r[0]) : "全校", students: [], seen: {} }; byKey.set(gKey, g); groups.push(g); }
+    const name = isBlank(r[1]) ? "（未填姓名）" : String(r[1]).trim();
+    const grade = isBlank(r[0]) ? "" : gradeLabel(r[0]);
+    const key = (CONFIG.GROUP_BY_GRADE ? "" : grade + "/") + name;
+    g.seen[key] = (g.seen[key] || 0) + 1;
+    g.students.push({ key: key + "#" + g.seen[key], name, grade, disc: parseCount(r[2]), jump: parseCount(r[3]) });
+  }
+  groups.forEach((g) => delete g.seen);
+  return groups;
+}
+
+// 指派夥伴：仍在同組的學生保留原夥伴，新同學依序拿未使用的夥伴
+function assignCompanions(groups) {
+  const next = new Map();
+  for (const g of groups) {
+    const prev = state.assignments.get(g.key) || new Map();
+    const map = new Map(), used = new Set();
+    g.students.forEach((s) => {
+      if (prev.has(s.key)) { map.set(s.key, prev.get(s.key)); used.add(prev.get(s.key)); }
+    });
+    const per = CONFIG.MAX_PER_PAGE;
+    g.students.forEach((s, i) => {
+      if (map.has(s.key)) return;
+      const start = Math.floor(i / per) * per;      // 同一頁的其他同學
+      const mates = new Set(g.students.slice(start, start + per).filter((m) => map.has(m.key)).map((m) => map.get(m.key)));
+      const N = COMPANIONS.length;
+      const order = Array.from({ length: N }, (_, k) => (i + k) % N);
+      let idx = order.find((k) => !used.has(k) && !mates.has(k));      // 先用還沒出現過的夥伴
+      if (idx === undefined) idx = order.find((k) => !mates.has(k));    // 超過七人時循環使用，但同頁不重複
+      if (idx === undefined) idx = i % N;
+      map.set(s.key, idx); used.add(idx);
+    });
+    g.students.forEach((s) => (s.comp = map.get(s.key)));
+    next.set(g.key, map);
+  }
+  state.assignments = next;
+}
+
+function buildPages(groups) {
+  const pages = [];
+  for (const g of groups) {
+    const n = Math.max(1, Math.ceil(g.students.length / CONFIG.MAX_PER_PAGE));
+    for (let p = 0; p < n; p++) {
+      pages.push({
+        id: g.key + "|" + p, groupKey: g.key,
+        label: !CONFIG.GROUP_BY_GRADE
+          ? (() => { const a = p * CONFIG.MAX_PER_PAGE + 1, b = Math.min(g.students.length, a + CONFIG.MAX_PER_PAGE - 1); return a === b ? `第 ${a} 位` : `第 ${a}–${b} 位`; })()
+          : n > 1 ? `${g.label}（${p + 1}/${n}）` : g.label,
+        students: g.students.slice(p * CONFIG.MAX_PER_PAGE, (p + 1) * CONFIG.MAX_PER_PAGE),
+      });
+    }
+  }
+  return pages;
+}
+
+/* ---------- 套用新資料（保留目前年級與輪播進度） ---------- */
+function applyRows(rows) {
+  const groups = buildGroups(rows);
+  assignCompanions(groups);
+  const sig = JSON.stringify(groups);
+  const firstTime = !state.loaded;
+  state.loaded = true;
+  if (!firstTime && sig === state.signature) return;   // 沒有新數據
+  state.signature = sig;
+  state.groups = groups;
+  state.pages = buildPages(groups);
+
+  if (firstTime) { state.pageIndex = 0; state.elapsed = 0; showPage(true); return; }
+
+  let idx = state.pages.findIndex((p) => p.id === state.pageId);
+  if (idx < 0) {
+    const gk = state.pageId ? state.pageId.split("|")[0] : null;
+    idx = state.pages.findIndex((p) => p.groupKey === gk);
+  }
+  if (idx < 0) { state.pageIndex = Math.min(state.pageIndex, Math.max(0, state.pages.length - 1)); state.elapsed = 0; showPage(true); return; }
+  state.pageIndex = idx;
+  refreshCurrentPage();
+}
+
+/* ---------- 畫面產生 ---------- */
+function layoutFor(n) {
+  if (n <= 2) return "duo";
+  if (n <= 4) return "quad";
+  return "rows";
+}
+
+function nodesHTML(count, levels) {
+  return levels.map((l) => {
+    const ok = count != null && count >= l.at;
+    return `<div class="node"><img src="icons/${ok ? "milestone-earned" : "milestone-pending"}.png" alt="${ok ? "已達" : "未達"} ${fmt(l.at)}"><span class="cap">${fmt(l.at)}</span></div>`;
+  }).join("");
+}
+
+function statHTML(kind, count) {
+  const isJump = kind === "jump";
+  const levels = isJump ? JUMP_LEVELS : DISC_LEVELS;
+  const got = reached(count, levels);
+  let tag, off = false;
+  if (count == null) { tag = "待補資料"; off = true; }
+  else if (isJump) { tag = got.length ? "動作：" + got[got.length - 1].name : "動作未解鎖"; off = !got.length; }
+  else { tag = `配件 ${got.length}/3`; off = !got.length; }
+  return `<div class="stat stat--${kind}">
+      <div class="stat-id"><img src="icons/${isJump ? "jump-rope" : "flying-disc"}.png" alt=""><span>${isJump ? "跳繩" : "飛盤"}</span></div>
+      <div class="num${count == null ? " na" : ""}">${count == null ? "—" : fmt(count)}</div>
+      <div class="nodes">${nodesHTML(count, levels)}</div>
+      <div class="tag${off ? " off" : ""}">${tag}</div>
+    </div>`;
+}
+
+function collectionHTML(disc) {
+  const got = reached(disc, DISC_LEVELS);
+  return DISC_LEVELS.map((l, i) => i < got.length
+    ? `<div class="slot" title="${l.name}"><img src="${l.img}" alt="${l.name}"></div>`
+    : `<div class="slot empty" aria-hidden="true"></div>`).join("");
+}
+
+function topMotion(jump) {
+  const got = reached(jump, JUMP_LEVELS);
+  return got.length ? got[got.length - 1].motion : "";
+}
+
+function cardHTML(s, extraClass) {
+  const c = COMPANIONS[s.comp];
+  return `<article class="card ${extraClass || ""}" data-key="${esc(s.key)}" data-top-motion="${topMotion(s.jump)}">
+    ${!CONFIG.GROUP_BY_GRADE && s.grade ? `<div class="grade-tag">${esc(s.grade)}</div>` : ""}
+    <div class="who">
+      <div class="sports-companion"><img class="sports-companion__figure" src="${c.img}" alt="${c.name}夥伴"></div>
+      <div class="nameplate">${esc(s.name)}</div>
+      <div class="collection" aria-label="配件收藏">${collectionHTML(s.disc)}</div>
+    </div>
+    <div class="stats">${statHTML("jump", s.jump)}${statHTML("disc", s.disc)}</div>
+  </article>`;
+}
+
+function renderPage(page, animate) {
+  const main = $("main");
+  const n = page.students.length;
+  const layout = layoutFor(n);
+  let cls = "page layout-" + layout;
+  if (layout === "duo" && n === 1) cls += " single";
+  const cards = page.students.map((s, i) =>
+    cardHTML(s, layout === "quad" && n === 3 && i === 2 ? "center" : "")).join("");
+  main.innerHTML = `<section class="${cls}${animate && !reducedMotionMQ.matches ? " enter" : ""}">${cards}</section>`;
+  const sec = main.firstElementChild;
+  if (layout === "rows") {
+    const H = main.clientHeight, gap = 12;
+    const h = (H - gap * (n - 1)) / n;
+    sec.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+    sec.style.setProperty("--h", (h - 10) + "px");  // 扣掉卡片框線
+  }
+  if (layout === "quad" && n <= 2) sec.style.gridTemplateRows = "1fr";
+  watchImages(sec);
+  fitTexts(sec);
+}
+
+// 同一組學生只有數字變化時，就地更新，不打斷動畫
+function patchPage(page) {
+  const cards = [...$("main").querySelectorAll(".card")];
+  const same = cards.length === page.students.length &&
+    cards.every((el, i) => el.dataset.key === page.students[i].key &&
+      el.querySelector(".sports-companion__figure").getAttribute("src") === COMPANIONS[page.students[i].comp].img);
+  if (!same) return false;
+  cards.forEach((el, i) => {
+    const s = page.students[i];
+    el.dataset.topMotion = topMotion(s.jump);
+    el.querySelector(".nameplate").textContent = s.name;
+    el.querySelector(".collection").innerHTML = collectionHTML(s.disc);
+    el.querySelector(".stats").innerHTML = statHTML("jump", s.jump) + statHTML("disc", s.disc);
+  });
+  watchImages($("main"));
+  fitTexts($("main"));
+  return true;
+}
+
+function updateHeader() {
+  const page = state.pages[state.pageIndex];
+  $("gradeLabel").textContent = page ? page.label : "—";
+  const total = state.groups.reduce((t, g) => t + g.students.length, 0);
+  $("pillLabel").textContent = CONFIG.GROUP_BY_GRADE ? "目前年級" : `全校學生・共 ${total} 位`;
+  const chip = $("pageChip");
+  chip.hidden = state.pages.length < 1;
+  chip.textContent = `${state.pages.length ? state.pageIndex + 1 : 0} / ${state.pages.length}`;
+  $("pauseChip").hidden = !state.paused;
+  $("demoChip").hidden = !DEMO;
+}
+
+function showNotice(title, sub) {
+  cancelMotions();
+  $("main").innerHTML = `<div class="notice"><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ""}</div>`;
+}
+
+function showPage(animate) {
+  cancelMotions();
+  const page = state.pages[state.pageIndex];
+  if (!page) {
+    state.pageId = null;
+    updateHeader();
+    showNotice("健康統計目前沒有學生資料", "資料表新增學生後會自動顯示");
+    return;
+  }
+  state.pageId = page.id;
+  renderPage(page, animate);
+  updateHeader();
+  playMotionSequence();
+}
+
+function refreshCurrentPage() {
+  const page = state.pages[state.pageIndex];
+  if (!page) { showPage(false); return; }
+  state.pageId = page.id;
+  if (!patchPage(page)) { cancelMotions(); renderPage(page, false); }
+  updateHeader();
+}
+
+/* ---------- 文字自動縮小，避免裁切 ---------- */
+function fitTexts(root) {
+  root.querySelectorAll(".num, .nameplate").forEach((el) => {
+    el.style.fontSize = "";
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    const min = size * 0.45;
+    while (el.scrollWidth > el.clientWidth + 1 && size > min) {
+      size -= 2; el.style.fontSize = size + "px";
+    }
+  });
+}
+
+/* ---------- 圖片檢查 ---------- */
+const assetReport = { ok: new Set(), failed: new Set() };
+window.__assetReport = assetReport;
+function watchImages(root) {
+  root.querySelectorAll("img").forEach((img) => {
+    const mark = () => {
+      if (img.naturalWidth > 0) assetReport.ok.add(img.getAttribute("src"));
+      else { assetReport.failed.add(img.getAttribute("src")); img.classList.add("img-missing"); console.error("圖片載入失敗：", img.getAttribute("src")); }
+    };
+    if (img.complete) mark(); else { img.addEventListener("load", mark, { once: true }); img.addEventListener("error", mark, { once: true }); }
+  });
+}
+
+// 預載所有素材，含三種動作特效圖，並確認 companion-motion.css 已生效
+const ALL_ASSETS = [
+  "scene/meadow.webp", "scene/title.png",
+  ...COMPANIONS.map((c) => c.img),
+  "icons/jump-rope.png", "icons/flying-disc.png", "icons/milestone-earned.png", "icons/milestone-pending.png", "icons/reward-star.png",
+  ...DISC_LEVELS.map((l) => l.img),
+  "motion/landing-puffs.png", "motion/spin-trail.png", "motion/triple-hop-stars.png",
+];
+function preloadAssets() {
+  return Promise.all(ALL_ASSETS.map((src) => new Promise((res) => {
+    const im = new Image();
+    im.onload = () => { assetReport.ok.add(src); res(); };
+    im.onerror = () => { assetReport.failed.add(src); console.error("素材載入失敗：", src); res(); };
+    im.src = src;
+  })));
+}
+function checkMotionCSS() {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:-9999px;top:0;width:10px;height:10px;";
+  probe.innerHTML = '<div class="sports-companion"><img class="sports-companion__figure" alt=""></div>';
+  document.body.appendChild(probe);
+  const box = probe.firstChild, fig = box.firstChild;
+  const result = {};
+  for (const m of ["hop", "spin", "triple"]) {
+    box.setAttribute("data-motion", m);
+    result[m] = {
+      animation: getComputedStyle(fig).animationName,
+      effect: getComputedStyle(box, "::after").backgroundImage,
+    };
+  }
+  probe.remove();
+  const ok = Object.values(result).every((r) => r.animation.startsWith("sports-companion") && /\.png/.test(r.effect));
+  if (!ok) console.error("companion-motion.css 未正確載入：", result);
+  window.__motionCheck = { ok, result };
+  return ok;
+}
+
+/* ---------- 動作播放：依學生順序，一次一位 ---------- */
+let motionToken = 0, motionTimers = [];
+const MOTION_START_DELAY = 900, MOTION_GAP = 350;
+function later(fn, ms) { motionTimers.push(setTimeout(fn, ms)); }
+function cancelMotions() {
+  motionToken++;
+  motionTimers.forEach(clearTimeout); motionTimers = [];
+  document.querySelectorAll("#main .sports-companion[data-motion]").forEach((el) => el.removeAttribute("data-motion"));
+  document.querySelectorAll("#main .card.is-playing").forEach((el) => el.classList.remove("is-playing"));
+}
+function playMotionSequence() {
+  if (reducedMotionMQ.matches) return;               // 減少動態：只顯示數字與達標
+  const token = motionToken;
+  const cards = [...$("main").querySelectorAll(".card")];
+  let i = 0;
+  const step = () => {
+    if (token !== motionToken) return;
+    while (i < cards.length && !cards[i].dataset.topMotion) i++;   // 未達 3,000 次維持站姿
+    if (i >= cards.length) return;
+    const card = cards[i++];
+    if (!card.isConnected) return;
+    const motion = card.dataset.topMotion;
+    const box = card.querySelector(".sports-companion");
+    const fig = box.querySelector(".sports-companion__figure");
+    const lvl = JUMP_LEVELS.find((l) => l.motion === motion);
+    let done = false;
+    const finish = () => {
+      if (done) return; done = true;
+      fig.removeEventListener("animationend", onEnd);
+      box.removeAttribute("data-motion");            // 回到站姿
+      card.classList.remove("is-playing");
+      if (token === motionToken) later(step, MOTION_GAP);
+    };
+    const onEnd = (e) => { if (e.target === fig) finish(); };
+    fig.addEventListener("animationend", onEnd);
+    card.classList.add("is-playing");
+    box.setAttribute("data-motion", motion);
+    later(finish, (lvl ? lvl.ms : 1000) + 400);      // 保險：動畫事件沒觸發也會收回
+  };
+  later(step, MOTION_START_DELAY);
+}
+if (reducedMotionMQ.addEventListener) reducedMotionMQ.addEventListener("change", () => { if (reducedMotionMQ.matches) cancelMotions(); });
+
+/* ---------- 輪播 ---------- */
+function goto(delta) {
+  if (!state.pages.length) return;
+  state.pageIndex = (state.pageIndex + delta + state.pages.length) % state.pages.length;
+  state.elapsed = 0;
+  showPage(true);
+}
+let lastTick = performance.now();
+setInterval(() => {
+  const now = performance.now(), dt = now - lastTick; lastTick = now;
+  const total = CONFIG.PAGE_SECONDS * 1000;
+  if (!state.paused && state.pages.length) {
+    state.elapsed += dt;
+    if (state.elapsed >= total) {
+      if (state.pages.length > 1) goto(1);
+      else { state.elapsed = 0; playMotionSequence(); }
+    }
+  }
+  $("progress").style.width = state.pages.length ? Math.min(100, state.elapsed / total * 100) + "%" : "0";
+}, 200);
+
+addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") { goto(1); e.preventDefault(); }
+  else if (e.key === "ArrowLeft") { goto(-1); e.preventDefault(); }
+  else if (e.key === " " || e.code === "Space") { state.paused = !state.paused; updateHeader(); e.preventDefault(); }
+  else if (e.key === "f" || e.key === "F") {
+    if (document.fullscreenElement) document.exitFullscreen && document.exitFullscreen();
+    else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
+  }
+});
+
+/* ---------- 讀取 Google 試算表（Google Charts 官方載入器 + Query） ---------- */
+let chartsReady = null;
+function loadGoogleCharts() {
+  if (chartsReady) return chartsReady;
+  chartsReady = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://www.gstatic.com/charts/loader.js";
+    s.onload = () => {
+      try {
+        google.charts.load("current", { packages: ["corechart"], language: "zh-TW" });
+        google.charts.setOnLoadCallback(() => resolve());
+      } catch (err) { reject(err); }
+    };
+    s.onerror = () => reject(new Error("無法載入 Google Charts"));
+    document.head.appendChild(s);
+  });
+  chartsReady.catch(() => { chartsReady = null; });  // 下次再重試載入
+  return chartsReady;
+}
+
+function sheetURL() {
+  return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?gid=${CONFIG.SHEET_GID}&headers=1`;
+}
+
+function fetchSheetRows() {
+  return loadGoogleCharts().then(() => new Promise((resolve, reject) => {
+    const q = new google.visualization.Query(sheetURL(), { sendMethod: "scriptInjection" });
+    q.setQuery(CONFIG.QUERY);
+    q.setTimeout(20);
+    q.send((res) => {
+      if (res.isError()) { reject(new Error(res.getMessage() + " " + res.getDetailedMessage())); return; }
+      const dt = res.getDataTable();
+      const labels = [0, 1, 2, 3].map((c) => dt.getColumnLabel(c));
+      window.__sheetColumns = labels;
+      if (!/飛盤/.test(labels[2]) || !/跳繩/.test(labels[3])) console.warn("欄位標題與預期不同（C 應為飛盤、E 應為跳繩）：", labels);
+      const rows = [];
+      for (let r = 0; r < dt.getNumberOfRows(); r++) {
+        rows.push([0, 1, 2, 3].map((c) => {
+          const v = dt.getValue(r, c);
+          if (c < 2 && v != null && typeof v !== "string") return dt.getFormattedValue(r, c);
+          return v;
+        }));
+      }
+      window.__sheetRowCount = rows.length;
+      resolve(rows);
+    });
+  }));
+}
+
+function timeText(d) {
+  return d.toLocaleTimeString("zh-TW", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+function setSync() {
+  const el = $("syncText");
+  if (DEMO) { el.textContent = "目前顯示示範資料"; el.classList.remove("stale"); return; }
+  if (state.lastError && state.lastOk) { el.textContent = `暫未更新 · 最近成功 ${timeText(state.lastOk)}`; el.classList.add("stale"); }
+  else if (state.lastOk) { el.textContent = `已更新 ${timeText(state.lastOk)}`; el.classList.remove("stale"); }
+  else if (state.lastError) { el.textContent = "暫未更新"; el.classList.add("stale"); }
+}
+
+let refreshTimer = null;
+function refresh() {
+  clearTimeout(refreshTimer);
+  const job = DEMO ? Promise.resolve(DEMO_ROWS) : fetchSheetRows();
+  job.then((rows) => {
+    state.lastOk = new Date(); state.lastError = null;
+    applyRows(rows);
+  }).catch((err) => {
+    state.lastError = err;
+    console.warn("讀取健康統計失敗：", err);
+    if (!state.loaded) { updateHeader(); showNotice("無法讀取健康統計", `將於 ${CONFIG.REFRESH_SECONDS} 秒後自動重試`); }
+  }).finally(() => {
+    setSync();
+    refreshTimer = setTimeout(refresh, CONFIG.REFRESH_SECONDS * 1000);
+  });
+}
+
+/* ---------- 啟動 ---------- */
+updateHeader();
+showNotice("讀取健康統計中…", "");
+preloadAssets().then(checkMotionCSS);
+refresh();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTexts($("main")));
+</script>
+</body>
+</html>

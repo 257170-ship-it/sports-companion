@@ -1,0 +1,88 @@
+.sports-companion {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: end;
+  aspect-ratio: 1;
+}
+
+.sports-companion__figure {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: center bottom;
+}
+
+.sports-companion[data-motion]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background-repeat: no-repeat;
+}
+
+.sports-companion[data-motion="hop"] .sports-companion__figure {
+  animation: sports-companion-hop 650ms ease-in-out;
+}
+
+.sports-companion[data-motion="hop"]::after {
+  background-image: url("./landing-puffs.png");
+  background-size: 48%;
+  background-position: center 138%;
+  animation: sports-companion-land 650ms ease-out;
+}
+
+.sports-companion[data-motion="spin"] .sports-companion__figure {
+  animation: sports-companion-spin 950ms ease-in-out;
+}
+
+.sports-companion[data-motion="spin"]::after {
+  background-image: url("./spin-trail.png");
+  background-size: 90%;
+  background-position: center 85%;
+  animation: sports-companion-flash 950ms ease-in-out;
+}
+
+.sports-companion[data-motion="triple"] .sports-companion__figure {
+  animation: sports-companion-hop 350ms ease-in-out 3;
+}
+
+.sports-companion[data-motion="triple"]::after {
+  background-image: url("./triple-hop-stars.png");
+  background-size: 48%;
+  background-position: right top;
+  animation: sports-companion-flash 1050ms ease-in-out;
+}
+
+@keyframes sports-companion-hop {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  18% { transform: translateY(0) scaleY(.92); }
+  55% { transform: translateY(-15%) scaleY(1); }
+  86% { transform: translateY(0) scaleY(.96); }
+}
+
+@keyframes sports-companion-spin {
+  0% { transform: translateY(0) rotateY(0); }
+  50% { transform: translateY(-18%) rotateY(180deg); }
+  100% { transform: translateY(0) rotateY(360deg); }
+}
+
+@keyframes sports-companion-land {
+  0%, 72%, 100% { opacity: 0; }
+  85% { opacity: 1; }
+}
+
+@keyframes sports-companion-flash {
+  0%, 100% { opacity: 0; }
+  30%, 65% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sports-companion[data-motion] .sports-companion__figure,
+  .sports-companion[data-motion]::after {
+    animation: none;
+  }
+}
